@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-900 text-dark-100 min-h-screen;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-900
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 hover:bg-primary-700 text-white
+           focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply btn bg-dark-700 hover:bg-dark-600 text-dark-100
+           focus:ring-dark-500;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 hover:bg-red-700 text-white
+           focus:ring-red-500;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-dark-800 text-dark-300
+           focus:ring-dark-500;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 rounded-lg bg-dark-800 border border-dark-600
+           text-dark-100 placeholder-dark-400
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-dark-300 mb-1;
+  }
+
+  .card {
+    @apply bg-dark-800 rounded-xl border border-dark-700 overflow-hidden;
+  }
+
+  .card-header {
+    @apply px-4 py-3 border-b border-dark-700 bg-dark-800/50;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-500;
+}
+
+/* Progress bar animation */
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.progress-active {
+  animation: progress-pulse 2s ease-in-out infinite;
+}
+
+/* Z-index scale for layering */
+@layer utilities {
+  .z-dropdown { z-index: 100; }
+  .z-modal { z-index: 200; }
+  .z-tooltip { z-index: 300; }
+  .z-notification { z-index: 400; }
+}
