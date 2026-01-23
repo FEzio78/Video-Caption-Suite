@@ -213,3 +213,97 @@ class GPUInfoResponse(BaseModel):
     cuda_available: bool
     cuda_version: Optional[str] = None
     max_batch_size: int
+
+
+# ============================================================================
+# Analytics Schemas
+# ============================================================================
+
+class StopwordPreset(str, Enum):
+    """Stopword filtering presets"""
+    NONE = "none"
+    ENGLISH = "english"
+    MINIMAL = "minimal"
+
+
+class WordFrequencyRequest(BaseModel):
+    """Request for word frequency analysis"""
+    video_names: Optional[List[str]] = None  # None = analyze all captions
+    stopword_preset: StopwordPreset = StopwordPreset.ENGLISH
+    custom_stopwords: Optional[List[str]] = None
+    min_word_length: int = Field(default=2, ge=1, le=10)
+    top_n: int = Field(default=50, ge=1, le=200)
+
+
+class WordFrequencyItem(BaseModel):
+    """Single word frequency entry"""
+    word: str
+    count: int
+    frequency: float  # 0-1 percentage
+
+
+class WordFrequencyResponse(BaseModel):
+    """Response for word frequency analysis"""
+    words: List[WordFrequencyItem]
+    total_words: int
+    total_unique_words: int
+    captions_analyzed: int
+    analysis_time_ms: float
+
+
+class NgramRequest(BaseModel):
+    """Request for n-gram analysis"""
+    video_names: Optional[List[str]] = None
+    n: int = Field(default=2, ge=2, le=4)  # 2=bigrams, 3=trigrams, 4=4-grams
+    stopword_preset: StopwordPreset = StopwordPreset.ENGLISH
+    top_n: int = Field(default=30, ge=1, le=100)
+    min_count: int = Field(default=2, ge=1)
+
+
+class NgramItem(BaseModel):
+    """Single n-gram entry"""
+    ngram: List[str]  # ["word1", "word2"] for bigram
+    display: str  # "word1 word2" for display
+    count: int
+    frequency: float
+
+
+class NgramResponse(BaseModel):
+    """Response for n-gram analysis"""
+    ngrams: List[NgramItem]
+    n: int
+    total_ngrams: int
+    captions_analyzed: int
+
+
+class CorrelationRequest(BaseModel):
+    """Request for word correlation analysis"""
+    video_names: Optional[List[str]] = None
+    target_words: Optional[List[str]] = None  # None = auto-select top words
+    window_size: int = Field(default=5, ge=2, le=20)
+    min_co_occurrence: int = Field(default=3, ge=1)
+    top_n: int = Field(default=50, ge=1, le=200)
+
+
+class CorrelationItem(BaseModel):
+    """Single correlation entry"""
+    word1: str
+    word2: str
+    co_occurrence: int
+    pmi_score: float  # Pointwise Mutual Information
+
+
+class CorrelationResponse(BaseModel):
+    """Response for correlation analysis"""
+    correlations: List[CorrelationItem]
+    nodes: List[str]  # Unique words for network visualization
+    captions_analyzed: int
+
+
+class AnalyticsSummary(BaseModel):
+    """Quick summary statistics"""
+    total_captions: int
+    total_words: int
+    unique_words: int
+    avg_words_per_caption: float
+    top_words: List[WordFrequencyItem]  # Top 10 for quick display

@@ -15,6 +15,7 @@ Complete reference for the Video Caption Suite REST and WebSocket APIs.
 - [Caption Endpoints](#caption-endpoints)
 - [Model Endpoints](#model-endpoints)
 - [Processing Endpoints](#processing-endpoints)
+- [Analytics Endpoints](#analytics-endpoints)
 - [WebSocket API](#websocket-api)
 
 ---
@@ -640,6 +641,149 @@ Get current processing status.
 ```
 
 **File Reference:** `backend/api.py:893-910`
+
+---
+
+## Analytics Endpoints
+
+Analyze word patterns across generated captions.
+
+### GET /api/analytics/summary
+
+Get quick statistics about the caption dataset.
+
+**Response:**
+```json
+{
+  "total_captions": 150,
+  "total_words": 45230,
+  "unique_words": 3421,
+  "avg_words_per_caption": 301.5,
+  "top_words": [
+    {"word": "video", "count": 892, "frequency": 0.0197},
+    {"word": "shows", "count": 654, "frequency": 0.0145}
+  ]
+}
+```
+
+**File Reference:** `backend/api.py`
+
+---
+
+### POST /api/analytics/wordfreq
+
+Analyze word frequency across captions.
+
+**Request Body:**
+```json
+{
+  "video_names": ["video1.mp4", "video2.mp4"],
+  "stopword_preset": "english",
+  "custom_stopwords": ["specific", "words"],
+  "min_word_length": 2,
+  "top_n": 50
+}
+```
+
+All fields optional. `video_names` = null analyzes all captions.
+
+**Stopword Presets:**
+- `none`: No stopwords filtered
+- `minimal`: Basic function words (the, a, an, is, are)
+- `english`: Comprehensive English stopwords (200+ words)
+
+**Response:**
+```json
+{
+  "words": [
+    {"word": "person", "count": 234, "frequency": 0.0051},
+    {"word": "walking", "count": 189, "frequency": 0.0042}
+  ],
+  "total_words": 45230,
+  "total_unique_words": 3421,
+  "captions_analyzed": 150,
+  "analysis_time_ms": 45.2
+}
+```
+
+**File Reference:** `backend/api.py`, `backend/analytics.py`
+
+---
+
+### POST /api/analytics/ngrams
+
+Analyze n-gram (word sequences) frequency.
+
+**Request Body:**
+```json
+{
+  "video_names": null,
+  "n": 2,
+  "stopword_preset": "english",
+  "top_n": 30,
+  "min_count": 2
+}
+```
+
+**Parameters:**
+- `n`: 2 = bigrams, 3 = trigrams, 4 = 4-grams (default: 2)
+- `min_count`: Minimum occurrence count to include (default: 2)
+
+**Response:**
+```json
+{
+  "ngrams": [
+    {"ngram": ["person", "walking"], "display": "person walking", "count": 45, "frequency": 0.0023},
+    {"ngram": ["camera", "pans"], "display": "camera pans", "count": 38, "frequency": 0.0019}
+  ],
+  "n": 2,
+  "total_ngrams": 12450,
+  "captions_analyzed": 150
+}
+```
+
+**File Reference:** `backend/api.py`, `backend/analytics.py`
+
+---
+
+### POST /api/analytics/correlations
+
+Analyze word co-occurrence and correlations using PMI (Pointwise Mutual Information).
+
+**Request Body:**
+```json
+{
+  "video_names": null,
+  "target_words": ["person", "camera"],
+  "window_size": 5,
+  "min_co_occurrence": 3,
+  "top_n": 50
+}
+```
+
+**Parameters:**
+- `target_words`: Optional list of words to focus on (null = all words)
+- `window_size`: Word context window for co-occurrence (default: 5)
+- `min_co_occurrence`: Minimum times words appear together (default: 3)
+
+**Response:**
+```json
+{
+  "correlations": [
+    {"word1": "person", "word2": "walking", "co_occurrence": 89, "pmi_score": 3.45},
+    {"word1": "camera", "word2": "pans", "co_occurrence": 67, "pmi_score": 4.12}
+  ],
+  "nodes": ["person", "walking", "camera", "pans", "scene"],
+  "captions_analyzed": 150
+}
+```
+
+**PMI Score:**
+- Positive: Words appear together more than expected by chance
+- Negative: Words appear together less than expected
+- Higher absolute value = stronger association
+
+**File Reference:** `backend/api.py`, `backend/analytics.py`
 
 ---
 

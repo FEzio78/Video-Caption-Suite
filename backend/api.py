@@ -30,6 +30,11 @@ from backend.schemas import (
     ModelStatus, ErrorResponse, ProcessingStage, GPUInfoResponse,
     SavedPrompt, PromptLibrary, CreatePromptRequest, UpdatePromptRequest,
     DirectoryRequest, DirectoryResponse, DirectoryBrowseResponse,
+    # Analytics schemas
+    StopwordPreset, WordFrequencyRequest, WordFrequencyResponse, WordFrequencyItem,
+    NgramRequest, NgramResponse, NgramItem,
+    CorrelationRequest, CorrelationResponse, CorrelationItem,
+    AnalyticsSummary,
 )
 from backend.gpu_utils import get_system_info
 from backend.processing import ProcessingManager
@@ -915,6 +920,190 @@ async def websocket_progress(websocket: WebSocket):
     finally:
         _connected_websockets.discard(websocket)
         print(f"[API] WebSocket client disconnected. Total: {len(_connected_websockets)}")
+
+
+# ============================================================================
+# Analytics Endpoints
+# ============================================================================
+
+from backend.analytics import (
+    calculate_word_frequency,
+    calculate_ngrams,
+    calculate_word_correlations,
+    get_caption_texts_from_directory,
+    get_stopwords_for_preset,
+    tokenize_text,
+)
+import time as time_module
+
+
+@app.get("/api/analytics/summary", response_model=AnalyticsSummary)
+async def get_analytics_summary():
+    """Get quick analytics summary for all captions"""
+    working_dir = config.get_working_directory()
+    traverse = config.get_traverse_subfolders()
+
+    captions = get_caption_texts_from_directory(Path(working_dir), traverse)
+
+    if not captions:
+        return AnalyticsSummary(
+            total_captions=0,
+            total_words=0,
+            unique_words=0,
+            avg_words_per_caption=0.0,
+            top_words=[]
+        )
+
+    # Combine all texts for analysis
+    texts = [text for _, text in captions]
+
+    # Calculate word frequency for summary
+    stopwords = get_stopwords_for_preset('english')
+    word_results = calculate_word_frequency(texts, stopwords=stopwords, top_n=10)
+
+    # Count total words (including stopwords for accurate count)
+    total_words = 0
+    all_words = set()
+    for text in texts:
+        words = tokenize_text(text, lowercase=True, min_word_length=2)
+        total_words += len(words)
+        all_words.update(words)
+
+    return AnalyticsSummary(
+        total_captions=len(captions),
+        total_words=total_words,
+        unique_words=len(all_words),
+        avg_words_per_caption=total_words / len(captions) if captions else 0,
+        top_words=[WordFrequencyItem(
+            word=r.word, count=r.count, frequency=r.frequency
+        ) for r in word_results]
+    )
+
+
+@app.post("/api/analytics/wordfreq", response_model=WordFrequencyResponse)
+async def analyze_word_frequency(request: WordFrequencyRequest):
+    """Analyze word frequency across captions"""
+    start_time = time_module.time()
+
+    working_dir = config.get_working_directory()
+    traverse = config.get_traverse_subfolders()
+
+    captions = get_caption_texts_from_directory(
+        Path(working_dir), traverse, request.video_names
+    )
+
+    if not captions:
+        raise HTTPException(status_code=404, detail="No captions found")
+
+    texts = [text for _, text in captions]
+    stopwords = get_stopwords_for_preset(request.stopword_preset.value, request.custom_stopwords)
+
+    results = calculate_word_frequency(
+        texts,
+        stopwords=stopwords,
+        min_word_length=request.min_word_length,
+        top_n=request.top_n
+    )
+
+    # Calculate totals
+    total_words = sum(r.count for r in results)
+    unique_words = len(results)
+
+    # Get actual total (not just top_n)
+    all_word_results = calculate_word_frequency(
+        texts, stopwords=stopwords, min_word_length=request.min_word_length, top_n=10000
+    )
+    actual_total = sum(r.count for r in all_word_results)
+    actual_unique = len(all_word_results)
+
+    return WordFrequencyResponse(
+        words=[WordFrequencyItem(
+            word=r.word, count=r.count, frequency=r.frequency
+        ) for r in results],
+        total_words=actual_total,
+        total_unique_words=actual_unique,
+        captions_analyzed=len(captions),
+        analysis_time_ms=(time_module.time() - start_time) * 1000
+    )
+
+
+@app.post("/api/analytics/ngrams", response_model=NgramResponse)
+async def analyze_ngrams(request: NgramRequest):
+    """Analyze n-gram frequency across captions"""
+    working_dir = config.get_working_directory()
+    traverse = config.get_traverse_subfolders()
+
+    captions = get_caption_texts_from_directory(
+        Path(working_dir), traverse, request.video_names
+    )
+
+    if not captions:
+        raise HTTPException(status_code=404, detail="No captions found")
+
+    texts = [text for _, text in captions]
+    stopwords = get_stopwords_for_preset(request.stopword_preset.value)
+
+    results = calculate_ngrams(
+        texts,
+        n=request.n,
+        stopwords=stopwords,
+        top_n=request.top_n,
+        min_count=request.min_count
+    )
+
+    return NgramResponse(
+        ngrams=[NgramItem(
+            ngram=list(r.ngram),
+            display=' '.join(r.ngram),
+            count=r.count,
+            frequency=r.frequency
+        ) for r in results],
+        n=request.n,
+        total_ngrams=len(results),
+        captions_analyzed=len(captions)
+    )
+
+
+@app.post("/api/analytics/correlations", response_model=CorrelationResponse)
+async def analyze_correlations(request: CorrelationRequest):
+    """Analyze word co-occurrence correlations using PMI"""
+    working_dir = config.get_working_directory()
+    traverse = config.get_traverse_subfolders()
+
+    captions = get_caption_texts_from_directory(
+        Path(working_dir), traverse, request.video_names
+    )
+
+    if not captions:
+        raise HTTPException(status_code=404, detail="No captions found")
+
+    texts = [text for _, text in captions]
+    stopwords = get_stopwords_for_preset('english')
+
+    results = calculate_word_correlations(
+        texts,
+        stopwords=stopwords,
+        window_size=request.window_size,
+        min_co_occurrence=request.min_co_occurrence,
+        top_n=request.top_n
+    )
+
+    # Extract unique nodes for network visualization
+    nodes = set()
+    for r in results:
+        nodes.add(r.word1)
+        nodes.add(r.word2)
+
+    return CorrelationResponse(
+        correlations=[CorrelationItem(
+            word1=r.word1,
+            word2=r.word2,
+            co_occurrence=r.co_occurrence_count,
+            pmi_score=r.pmi_score
+        ) for r in results],
+        nodes=sorted(nodes),
+        captions_analyzed=len(captions)
+    )
 
 
 # ============================================================================

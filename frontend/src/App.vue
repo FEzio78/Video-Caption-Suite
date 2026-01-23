@@ -9,6 +9,7 @@ import { BaseButton, VirtualGrid } from '@/components/base'
 import { LayoutSidebar, ResizablePanel } from '@/components/layout'
 import { VideoTile, VideoGridToolbar } from '@/components/video'
 import { CaptionPanel } from '@/components/caption'
+import { AnalyticsPanel } from '@/components/analytics'
 import type { VideoInfo } from '@/types'
 
 const { connect, disconnect } = useWebSocket()
@@ -19,6 +20,10 @@ const settingsStore = useSettingsStore()
 
 const { videos, selectedVideos, loading, loadingTotal, loadingLoaded, loadingProgress } = storeToRefs(videoStore)
 const { state, wsConnected, isProcessing, isComplete, overallProgress, estimatedTimeRemaining } = storeToRefs(progressStore)
+
+// Main navigation tab
+type MainTab = 'media' | 'analytics'
+const activeMainTab = ref<MainTab>('media')
 
 // UI state
 const showCaptionPanel = ref(false)
@@ -151,18 +156,54 @@ onUnmounted(() => {
   <div class="app-container h-screen flex flex-col bg-dark-900 text-dark-100 overflow-hidden">
     <!-- Top bar -->
     <header class="flex-shrink-0 h-14 bg-dark-850 border-b border-dark-700 px-4 flex items-center justify-between">
-      <!-- Left: Logo & Title -->
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
+      <!-- Left: Logo & Title + Main Tabs -->
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div class="hidden sm:block">
+            <h1 class="text-sm font-semibold text-dark-100">Video Caption Suite</h1>
+            <p class="text-[10px] text-dark-500">Qwen3-VL-8B</p>
+          </div>
         </div>
-        <div class="hidden sm:block">
-          <h1 class="text-sm font-semibold text-dark-100">Video Caption Suite</h1>
-          <p class="text-[10px] text-dark-500">Qwen3-VL-8B</p>
-        </div>
+
+        <!-- Main Navigation Tabs -->
+        <nav class="flex items-center gap-1">
+          <button
+            :class="[
+              'px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-2',
+              activeMainTab === 'media'
+                ? 'bg-primary-500/15 text-primary-400'
+                : 'text-dark-400 hover:text-dark-200 hover:bg-dark-700/50'
+            ]"
+            @click="activeMainTab = 'media'"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Media
+          </button>
+          <button
+            :class="[
+              'px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-2',
+              activeMainTab === 'analytics'
+                ? 'bg-primary-500/15 text-primary-400'
+                : 'text-dark-400 hover:text-dark-200 hover:bg-dark-700/50'
+            ]"
+            @click="activeMainTab = 'analytics'"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Analytics
+          </button>
+        </nav>
       </div>
 
       <!-- Center: Processing status -->
@@ -223,117 +264,124 @@ onUnmounted(() => {
       <!-- Settings sidebar (always visible, resizable) -->
       <LayoutSidebar />
 
-      <!-- Video grid area -->
-      <main class="flex-1 flex flex-col overflow-hidden">
-        <!-- Toolbar -->
-        <VideoGridToolbar
-          v-model:grid-columns="gridColumns"
-          @refresh="refreshVideos"
-        />
-
-        <!-- Video grid with virtual scrolling -->
-        <div class="flex-1 p-4 overflow-hidden">
-          <!-- Empty state -->
-          <div
-            v-if="videos.length === 0 && !loading"
-            class="h-full flex items-center justify-center"
-          >
-            <div class="text-center">
-              <svg class="w-16 h-16 mx-auto text-dark-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              <h3 class="text-lg font-medium text-dark-400 mb-1">No videos found</h3>
-              <p class="text-sm text-dark-600">Add videos to the input_videos folder</p>
-            </div>
-          </div>
-
-          <!-- Loading state with progress -->
-          <div v-else-if="loading && videos.length === 0" class="h-full flex items-center justify-center">
-            <div class="text-center">
-              <svg class="w-10 h-10 mx-auto text-primary-500 animate-spin mb-4" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <p class="text-dark-300 font-medium">Loading videos...</p>
-              <p v-if="loadingTotal > 0" class="text-dark-500 text-sm mt-1">
-                {{ loadingLoaded.toLocaleString() }} / {{ loadingTotal.toLocaleString() }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Virtual grid (show even while loading for progressive display) -->
-          <template v-else>
-            <!-- Loading progress bar at top -->
-            <div v-if="loading && loadingTotal > 0" class="mb-3">
-              <div class="flex items-center justify-between text-xs text-dark-400 mb-1">
-                <span>Loading videos...</span>
-                <span>{{ loadingLoaded.toLocaleString() }} / {{ loadingTotal.toLocaleString() }} ({{ loadingProgress }}%)</span>
-              </div>
-              <div class="h-1 bg-dark-700 rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-primary-500 transition-all duration-300"
-                  :style="{ width: `${loadingProgress}%` }"
-                />
-              </div>
-            </div>
-
-            <VirtualGrid
-              :items="videos"
-              :item-min-width="160"
-              :gap="12"
-              :columns="gridColumns"
-              :class="loading && loadingTotal > 0 ? 'flex-1' : ''"
-              @item-click="handleVideoClick"
-              @columns-changed="(cols) => gridColumns = cols"
-            >
-              <template #default="{ item: video }">
-                <VideoTile
-                  :video="video"
-                  :selected="isSelected(video.name)"
-                  :processing="processingVideoName === video.name"
-                  @select="toggleSelection(video)"
-                  @view-caption="handleViewCaption(video)"
-                />
-              </template>
-            </VirtualGrid>
-          </template>
-        </div>
-      </main>
-
-      <!-- Caption panel (collapsible, resizable) -->
-      <Transition name="slide-right">
-        <aside
-          v-if="showCaptionPanel"
-          class="flex-shrink-0 overflow-hidden relative border-l border-dark-700"
-          :style="{ width: `${captionPanelWidth}px` }"
-        >
-          <!-- Resize handle on left side -->
-          <div
-            class="absolute top-0 left-0 w-2 h-full cursor-ew-resize group z-10"
-            :class="isResizingCaption ? 'bg-primary-500/30' : 'hover:bg-primary-500/20'"
-            @mousedown="startResizeCaption"
-          >
-            <!-- Visible grip dots -->
-            <div
-              class="absolute top-1/2 left-0 transform -translate-y-1/2 translate-x-0.5 flex flex-col gap-1 py-2 px-0.5 rounded transition-colors"
-              :class="isResizingCaption ? 'bg-primary-500/40' : 'bg-dark-700 group-hover:bg-dark-600'"
-            >
-              <div
-                v-for="i in 6"
-                :key="i"
-                class="w-1 h-1 rounded-full"
-                :class="isResizingCaption ? 'bg-primary-400' : 'bg-dark-500 group-hover:bg-dark-400'"
-              />
-            </div>
-          </div>
-          <CaptionPanel
-            :video="selectedVideoForCaption"
-            @close="showCaptionPanel = false"
-            @delete="handleDeleteCaption"
+      <!-- Media Tab: Video grid area -->
+      <template v-if="activeMainTab === 'media'">
+        <main class="flex-1 flex flex-col overflow-hidden">
+          <!-- Toolbar -->
+          <VideoGridToolbar
+            v-model:grid-columns="gridColumns"
+            @refresh="refreshVideos"
           />
-        </aside>
-      </Transition>
+
+          <!-- Video grid with virtual scrolling -->
+          <div class="flex-1 p-4 overflow-hidden">
+            <!-- Empty state -->
+            <div
+              v-if="videos.length === 0 && !loading"
+              class="h-full flex items-center justify-center"
+            >
+              <div class="text-center">
+                <svg class="w-16 h-16 mx-auto text-dark-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <h3 class="text-lg font-medium text-dark-400 mb-1">No videos found</h3>
+                <p class="text-sm text-dark-600">Add videos to the input_videos folder</p>
+              </div>
+            </div>
+
+            <!-- Loading state with progress -->
+            <div v-else-if="loading && videos.length === 0" class="h-full flex items-center justify-center">
+              <div class="text-center">
+                <svg class="w-10 h-10 mx-auto text-primary-500 animate-spin mb-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <p class="text-dark-300 font-medium">Loading videos...</p>
+                <p v-if="loadingTotal > 0" class="text-dark-500 text-sm mt-1">
+                  {{ loadingLoaded.toLocaleString() }} / {{ loadingTotal.toLocaleString() }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Virtual grid (show even while loading for progressive display) -->
+            <template v-else>
+              <!-- Loading progress bar at top -->
+              <div v-if="loading && loadingTotal > 0" class="mb-3">
+                <div class="flex items-center justify-between text-xs text-dark-400 mb-1">
+                  <span>Loading videos...</span>
+                  <span>{{ loadingLoaded.toLocaleString() }} / {{ loadingTotal.toLocaleString() }} ({{ loadingProgress }}%)</span>
+                </div>
+                <div class="h-1 bg-dark-700 rounded-full overflow-hidden">
+                  <div
+                    class="h-full bg-primary-500 transition-all duration-300"
+                    :style="{ width: `${loadingProgress}%` }"
+                  />
+                </div>
+              </div>
+
+              <VirtualGrid
+                :items="videos"
+                :item-min-width="160"
+                :gap="12"
+                :columns="gridColumns"
+                :class="loading && loadingTotal > 0 ? 'flex-1' : ''"
+                @item-click="handleVideoClick"
+                @columns-changed="(cols) => gridColumns = cols"
+              >
+                <template #default="{ item: video }">
+                  <VideoTile
+                    :video="video"
+                    :selected="isSelected(video.name)"
+                    :processing="processingVideoName === video.name"
+                    @select="toggleSelection(video)"
+                    @view-caption="handleViewCaption(video)"
+                  />
+                </template>
+              </VirtualGrid>
+            </template>
+          </div>
+        </main>
+
+        <!-- Caption panel (collapsible, resizable) -->
+        <Transition name="slide-right">
+          <aside
+            v-if="showCaptionPanel"
+            class="flex-shrink-0 overflow-hidden relative border-l border-dark-700"
+            :style="{ width: `${captionPanelWidth}px` }"
+          >
+            <!-- Resize handle on left side -->
+            <div
+              class="absolute top-0 left-0 w-2 h-full cursor-ew-resize group z-10"
+              :class="isResizingCaption ? 'bg-primary-500/30' : 'hover:bg-primary-500/20'"
+              @mousedown="startResizeCaption"
+            >
+              <!-- Visible grip dots -->
+              <div
+                class="absolute top-1/2 left-0 transform -translate-y-1/2 translate-x-0.5 flex flex-col gap-1 py-2 px-0.5 rounded transition-colors"
+                :class="isResizingCaption ? 'bg-primary-500/40' : 'bg-dark-700 group-hover:bg-dark-600'"
+              >
+                <div
+                  v-for="i in 6"
+                  :key="i"
+                  class="w-1 h-1 rounded-full"
+                  :class="isResizingCaption ? 'bg-primary-400' : 'bg-dark-500 group-hover:bg-dark-400'"
+                />
+              </div>
+            </div>
+            <CaptionPanel
+              :video="selectedVideoForCaption"
+              @close="showCaptionPanel = false"
+              @delete="handleDeleteCaption"
+            />
+          </aside>
+        </Transition>
+      </template>
+
+      <!-- Analytics Tab: Full analytics view -->
+      <main v-else-if="activeMainTab === 'analytics'" class="flex-1 overflow-hidden">
+        <AnalyticsPanel class="h-full" />
+      </main>
     </div>
 
     <!-- Bottom action bar -->

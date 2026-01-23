@@ -45,8 +45,9 @@ Before completing any task, verify:
 | Purpose | File | Key Sections |
 |---------|------|--------------|
 | API Server | `backend/api.py` | Endpoints, WebSocket, CORS |
-| Data Models | `backend/schemas.py` | Settings, Progress, Video/Caption |
+| Data Models | `backend/schemas.py` | Settings, Progress, Video/Caption, Analytics |
 | Processing | `backend/processing.py` | ProcessingManager, multi-GPU |
+| Analytics | `backend/analytics.py` | Word frequency, n-grams, correlations |
 | Model Loading | `model_loader.py` | load_model, generate_caption, clear_cache |
 | Video Processing | `video_processor.py` | extract_frames, process_video |
 | Configuration | `config.py` | All defaults |
@@ -59,9 +60,11 @@ Before completing any task, verify:
 | Video State | `frontend/src/stores/videoStore.ts` |
 | Progress State | `frontend/src/stores/progressStore.ts` |
 | Settings State | `frontend/src/stores/settingsStore.ts` |
+| Analytics State | `frontend/src/stores/analyticsStore.ts` |
 | API Calls | `frontend/src/composables/useApi.ts` |
 | WebSocket | `frontend/src/composables/useWebSocket.ts` |
 | Types | `frontend/src/types/*.ts` |
+| Analytics Components | `frontend/src/components/analytics/*.vue` |
 
 ## Code Patterns
 
@@ -167,6 +170,9 @@ Backend and frontend types must stay synchronized:
 | `backend/schemas.py:ProgressUpdate` | `frontend/src/types/progress.ts:ProgressState` |
 | `backend/schemas.py:VideoInfo` | `frontend/src/types/video.ts:VideoInfo` |
 | `backend/schemas.py:ProcessingStage` | `frontend/src/types/progress.ts:ProcessingStage` |
+| `backend/schemas.py:WordFrequency*` | `frontend/src/types/analytics.ts:WordFrequency*` |
+| `backend/schemas.py:Ngram*` | `frontend/src/types/analytics.ts:Ngram*` |
+| `backend/schemas.py:Correlation*` | `frontend/src/types/analytics.ts:Correlation*` |
 
 When changing one, change the other.
 

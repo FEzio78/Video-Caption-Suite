@@ -49,6 +49,14 @@ frontend/src/
 │   ├── caption/            # Caption display
 │   │   ├── CaptionPanel.vue
 │   │   └── CaptionViewer.vue
+│   ├── analytics/          # Word frequency analytics
+│   │   ├── AnalyticsPanel.vue
+│   │   ├── AnalyticsControls.vue
+│   │   ├── AnalyticsSummary.vue
+│   │   ├── WordFrequencyChart.vue
+│   │   ├── WordCloud.vue
+│   │   ├── NgramView.vue
+│   │   └── CorrelationView.vue
 │   └── progress/           # Progress indicators
 │       ├── StatusPanel.vue
 │       ├── ProgressBar.vue
@@ -58,7 +66,8 @@ frontend/src/
 ├── stores/                 # Pinia state management
 │   ├── videoStore.ts
 │   ├── progressStore.ts
-│   └── settingsStore.ts
+│   ├── settingsStore.ts
+│   └── analyticsStore.ts
 ├── composables/            # Reusable logic
 │   ├── useApi.ts
 │   ├── useWebSocket.ts
@@ -67,7 +76,8 @@ frontend/src/
 │   ├── settings.ts
 │   ├── progress.ts
 │   ├── video.ts
-│   └── api.ts
+│   ├── api.ts
+│   └── analytics.ts
 └── utils/                  # Helper functions
     └── formatters.ts
 ```
@@ -283,6 +293,76 @@ fetchGPUInfo(): Promise<void>
 
 ---
 
+### analyticsStore
+
+**Purpose:** Manages word frequency analytics state and API calls.
+
+**File:** `frontend/src/stores/analyticsStore.ts`
+
+**State:**
+```typescript
+interface AnalyticsState {
+  loading: boolean
+  error: string | null
+  wordFrequency: WordFrequencyResponse | null
+  ngrams: NgramResponse | null
+  correlations: CorrelationResponse | null
+  summary: AnalyticsSummary | null
+  settings: AnalyticsSettings
+}
+
+interface AnalyticsSettings {
+  stopwordPreset: 'none' | 'minimal' | 'english'
+  customStopwords: string[]
+  minWordLength: number
+  topN: number
+  ngramSize: number
+  visualizationType: 'bar' | 'wordcloud'
+  selectedVideos: string[] | null  // null = all
+}
+```
+
+**Getters:**
+```typescript
+// Check if any data has been loaded
+hasData: boolean
+
+// Number of captions analyzed (from any response)
+captionsAnalyzed: number
+
+// Check if summary has data
+hasSummary: boolean
+```
+
+**Actions:**
+```typescript
+// Fetch quick summary stats
+fetchSummary(): Promise<void>
+
+// Fetch word frequency analysis
+fetchWordFrequency(request?: Partial<WordFrequencyRequest>): Promise<void>
+
+// Fetch n-gram analysis
+fetchNgrams(request?: Partial<NgramRequest>): Promise<void>
+
+// Fetch word correlations
+fetchCorrelations(request?: Partial<CorrelationRequest>): Promise<void>
+
+// Clear all analysis data
+clearData(): void
+
+// Update settings (persisted to localStorage)
+updateSettings(updates: Partial<AnalyticsSettings>): void
+
+// Load settings from localStorage
+loadSettings(): void
+
+// Reset settings to defaults
+resetSettings(): void
+```
+
+---
+
 ## Composables
 
 ### useWebSocket
@@ -422,20 +502,22 @@ const { width, isResizing, startResize } = useResizable({
 **Responsibilities:**
 - WebSocket connection management
 - Overall layout orchestration
+- **Main navigation tabs** (Media / Analytics)
 - Model load/unload buttons
 - Process start/stop buttons
 - Video grid with virtual scrolling
 - Caption panel display
+- Analytics panel display
 
 **Key Sections:**
 ```vue
 <template>
   <div class="app-container">
-    <!-- Header with status -->
+    <!-- Header with main navigation -->
     <header>
-      <StatusPanel />
-      <ModelControls />
-      <ProcessControls />
+      <Logo />
+      <MainNavTabs />  <!-- Media | Analytics -->
+      <StatusIndicators />
     </header>
 
     <!-- Main content -->
@@ -445,19 +527,28 @@ const { width, isResizing, startResize } = useResizable({
         <SettingsPanel />
       </LayoutSidebar>
 
-      <!-- Video grid -->
-      <div class="video-grid">
-        <VideoGridToolbar />
-        <VirtualGrid :videos="videosWithStatus">
-          <template #item="{ video }">
-            <VideoTile :video="video" />
-          </template>
-        </VirtualGrid>
-      </div>
+      <!-- Media Tab: Video grid -->
+      <template v-if="activeMainTab === 'media'">
+        <div class="video-grid">
+          <VideoGridToolbar />
+          <VirtualGrid :videos="videosWithStatus">
+            <template #item="{ video }">
+              <VideoTile :video="video" />
+            </template>
+          </VirtualGrid>
+        </div>
+        <CaptionPanel />
+      </template>
 
-      <!-- Right panel (captions) -->
-      <CaptionPanel />
+      <!-- Analytics Tab: Full analytics view -->
+      <AnalyticsPanel v-else-if="activeMainTab === 'analytics'" />
     </main>
+
+    <!-- Footer with model/process controls -->
+    <footer>
+      <ModelControls />
+      <ProcessControls />
+    </footer>
   </div>
 </template>
 ```
@@ -501,7 +592,31 @@ emit('view-caption', videoName: string)
 2. **Model** - Model selection and loading
 3. **Inference** - Max frames, tokens, temperature
 4. **Prompt** - Custom captioning prompt
-5. **Library** - Saved prompts management
+
+---
+
+### AnalyticsPanel.vue
+
+**Purpose:** Word frequency analytics with multiple visualizations. Displayed as a **main view** (accessible via top navigation tab).
+
+**File:** `frontend/src/components/analytics/AnalyticsPanel.vue`
+
+**Features:**
+- Summary stats display (total captions, words, unique words)
+- Three analysis tabs: Word Frequency, N-grams, Correlations
+- Configurable stopword filtering (none/minimal/english)
+- Adjustable top N results and minimum word length
+- Two visualization modes for word frequency: Bar Chart and Word Cloud
+- N-gram size selector (bigrams, trigrams, 4-grams)
+- Correlation network visualization with PMI scores
+
+**Sub-components:**
+- `AnalyticsControls.vue` - Filter controls and analyze button
+- `AnalyticsSummary.vue` - Quick stats cards
+- `WordFrequencyChart.vue` - Horizontal bar chart visualization
+- `WordCloud.vue` - CSS-based word cloud with size/color by frequency
+- `NgramView.vue` - Ranked list of word sequences
+- `CorrelationView.vue` - List and SVG network graph of word pairs
 
 ---
 
@@ -628,6 +743,97 @@ type VideoStatus = 'pending' | 'captioned' | 'processing'
 
 interface VideoWithStatus extends VideoInfo {
   status: VideoStatus
+}
+```
+
+### analytics.ts
+
+```typescript
+type StopwordPreset = 'none' | 'english' | 'minimal'
+type VisualizationType = 'bar' | 'wordcloud' | 'correlation'
+type AnalyticsTab = 'frequency' | 'ngrams' | 'correlations'
+
+interface WordFrequencyItem {
+  word: string
+  count: number
+  frequency: number  // 0-1 percentage
+}
+
+interface WordFrequencyRequest {
+  video_names?: string[]
+  stopword_preset?: StopwordPreset
+  custom_stopwords?: string[]
+  min_word_length?: number
+  top_n?: number
+}
+
+interface WordFrequencyResponse {
+  words: WordFrequencyItem[]
+  total_words: number
+  total_unique_words: number
+  captions_analyzed: number
+  analysis_time_ms: number
+}
+
+interface NgramItem {
+  ngram: string[]
+  display: string
+  count: number
+  frequency: number
+}
+
+interface NgramRequest {
+  video_names?: string[]
+  n?: number  // 2=bigrams, 3=trigrams, 4=4-grams
+  stopword_preset?: StopwordPreset
+  top_n?: number
+  min_count?: number
+}
+
+interface NgramResponse {
+  ngrams: NgramItem[]
+  n: number
+  total_ngrams: number
+  captions_analyzed: number
+}
+
+interface CorrelationItem {
+  word1: string
+  word2: string
+  co_occurrence: number
+  pmi_score: number  // Pointwise Mutual Information
+}
+
+interface CorrelationRequest {
+  video_names?: string[]
+  target_words?: string[]
+  window_size?: number
+  min_co_occurrence?: number
+  top_n?: number
+}
+
+interface CorrelationResponse {
+  correlations: CorrelationItem[]
+  nodes: string[]  // Unique words for network visualization
+  captions_analyzed: number
+}
+
+interface AnalyticsSummary {
+  total_captions: number
+  total_words: number
+  unique_words: number
+  avg_words_per_caption: number
+  top_words: WordFrequencyItem[]
+}
+
+interface AnalyticsSettings {
+  stopwordPreset: StopwordPreset
+  customStopwords: string[]
+  minWordLength: number
+  topN: number
+  ngramSize: number
+  visualizationType: VisualizationType
+  selectedVideos: string[] | null  // null = all videos
 }
 ```
 
