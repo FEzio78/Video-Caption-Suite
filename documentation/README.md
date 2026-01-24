@@ -2,7 +2,7 @@
 
 ## Overview
 
-Video Caption Suite is a professional-grade video captioning application that uses the **Qwen3-VL-8B** vision-language model to automatically generate detailed text descriptions for videos. It features a modern web interface, real-time progress tracking, multi-GPU support, and comprehensive optimization features.
+Video Caption Suite is a professional-grade media captioning application that uses the **Qwen3-VL-8B** vision-language model to automatically generate detailed text descriptions for **videos and images**. It features a modern web interface, real-time progress tracking, multi-GPU support, and comprehensive optimization features.
 
 ## Table of Contents
 
@@ -70,14 +70,22 @@ Access the application at `http://localhost:5173`
 
 ## Key Features
 
-- **Automatic Video Captioning**: Generate detailed descriptions using state-of-the-art VLM
-- **Multi-GPU Support**: Process videos in parallel across multiple GPUs
+- **Video & Image Captioning**: Generate detailed descriptions for both videos and images
+- **Media Type Filters**: Toggle between videos, images, or both in directory settings
+- **Multi-GPU Support**: Process media in parallel across multiple GPUs
 - **Real-time Progress**: WebSocket-based live progress updates
 - **Custom Prompts**: Save and reuse captioning prompts
-- **Batch Processing**: Process entire folders of videos
+- **Batch Processing**: Process entire folders of media files
 - **Video Preview**: Hover to preview videos before processing
 - **Thumbnail Caching**: Fast grid loading with cached thumbnails
 - **Memory Management**: Proper VRAM cleanup on model unload
+
+### Supported Formats
+
+| Type | Extensions |
+|------|------------|
+| Videos | `.mp4`, `.avi`, `.mov`, `.mkv`, `.webm`, `.flv`, `.wmv` |
+| Images | `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp` |
 
 ## Project Structure
 
@@ -98,7 +106,7 @@ Video Caption Suite/
 │   └── package.json
 ├── config.py               # Backend configuration
 ├── model_loader.py         # Model lifecycle management
-├── video_processor.py      # Frame extraction
+├── video_processor.py      # Video/image processing
 ├── requirements.txt        # Python dependencies
 ├── documentation/          # This documentation
 └── CLAUDE.md              # AI assistant guidelines
