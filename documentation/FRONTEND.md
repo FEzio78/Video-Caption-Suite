@@ -141,7 +141,7 @@ deselectAll(): void
 selectUncaptioned(): void
 
 // Mark video as captioned (after processing)
-markVideoAsCaptioned(videoName: string): void
+markVideoAsCaptioned(videoName: string, captionPreview?: string | null): void
 
 // Delete a caption
 deleteCaption(videoName: string): Promise<void>
@@ -201,6 +201,10 @@ interface ProgressState {
   elapsed_time: number
   batch_size: number
   workers: WorkerProgress[]
+  completed_videos: number
+  // Transient completion event fields
+  just_completed_video: string | null
+  just_completed_caption_preview: string | null
   wsConnected: boolean
 }
 ```
@@ -232,7 +236,8 @@ estimatedTimeRemaining: string | null
 
 **Actions:**
 ```typescript
-// Update from WebSocket message
+// Update from WebSocket message (also handles per-video completion events
+// by calling videoStore.markVideoAsCaptioned when just_completed_video is set)
 updateFromWebSocket(data: Partial<ProgressState>): void
 
 // Set WebSocket connection status

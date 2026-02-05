@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ProgressState, ProcessingStage } from '@/types'
 import { initialProgressState } from '@/types'
+import { useVideoStore } from '@/stores/videoStore'
 
 export const useProgressStore = defineStore('progress', () => {
   const state = ref<ProgressState>({ ...initialProgressState })
@@ -64,6 +65,14 @@ export const useProgressStore = defineStore('progress', () => {
   })
 
   function updateFromWebSocket(data: ProgressState) {
+    // Handle per-video completion events
+    if (data.just_completed_video) {
+      const videoStore = useVideoStore()
+      videoStore.markVideoAsCaptioned(
+        data.just_completed_video,
+        data.just_completed_caption_preview
+      )
+    }
     state.value = { ...state.value, ...data }
   }
 

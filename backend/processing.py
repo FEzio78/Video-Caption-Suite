@@ -60,6 +60,9 @@ class ProcessingState:
     # Multi-GPU fields
     batch_size: int = 1
     workers: List[WorkerState] = field(default_factory=list)
+    # Transient completion event (cleared after each emit)
+    _just_completed_video: Optional[str] = None
+    _just_completed_caption_preview: Optional[str] = None
 
     def to_progress_update(self) -> ProgressUpdate:
         elapsed = time.time() - self.start_time if self.start_time > 0 else 0.0
@@ -79,6 +82,8 @@ class ProcessingState:
             elapsed_time=elapsed,
             batch_size=self.batch_size,
             workers=[w.to_worker_progress() for w in self.workers],
+            just_completed_video=self._just_completed_video,
+            just_completed_caption_preview=self._just_completed_caption_preview,
         )
 
 
@@ -107,6 +112,18 @@ class ProcessingManager:
                 await self.progress_callback(update)
             else:
                 self.progress_callback(update)
+        # Clear transient completion event after sending
+        self.state._just_completed_video = None
+        self.state._just_completed_caption_preview = None
+
+    def _get_display_name(self, video_path: Path) -> str:
+        """Get display name matching frontend VideoInfo.name format (relative path with forward slashes)"""
+        import config as _config
+        working_dir = _config.get_working_directory()
+        try:
+            return str(video_path.relative_to(working_dir)).replace('\\', '/')
+        except ValueError:
+            return video_path.name
 
     def _update_vram(self):
         """Update VRAM usage (sum across all GPUs)"""
@@ -325,7 +342,7 @@ class ProcessingManager:
                 worker = self.state.workers[worker_id]
 
                 worker.is_busy = True
-                worker.current_video = video_path.name
+                worker.current_video = self._get_display_name(video_path)
                 worker.substage = ProcessingSubstage.EXTRACTING_FRAMES
                 worker.substage_progress = 0.0
                 await self.emit_progress()
@@ -421,6 +438,10 @@ class ProcessingManager:
                     worker.current_video = None
                     worker.substage = ProcessingSubstage.IDLE
                     self.state.completed_videos += 1
+                    self.state._just_completed_video = self._get_display_name(video_path)
+                    if result.get("success") and result.get("caption"):
+                        caption_text = result["caption"]
+                        self.state._just_completed_caption_preview = caption_text[:150] + "..." if len(caption_text) > 150 else caption_text
                     await self.emit_progress()
 
                 return result
@@ -439,7 +460,7 @@ class ProcessingManager:
                         video_path = video_queue.pop(0)
                         self.state.video_index = len(videos) - len(video_queue) - len(active_tasks)
                         # Update current_video to first active video for backward compat
-                        self.state.current_video = video_path.name
+                        self.state.current_video = self._get_display_name(video_path)
                         task = asyncio.create_task(process_single_video(worker_id, video_path))
                         active_tasks[worker_id] = task
 
@@ -522,7 +543,7 @@ class ProcessingManager:
                     break
 
                 self.state.video_index = i
-                self.state.current_video = video_path.name
+                self.state.current_video = self._get_display_name(video_path)
                 self.state.substage = ProcessingSubstage.EXTRACTING_FRAMES
                 self.state.substage_progress = 0.0
                 await self.emit_progress()
@@ -604,6 +625,9 @@ class ProcessingManager:
 
                     self.state.substage_progress = 1.0
                     self.state.completed_videos += 1
+                    self.state._just_completed_video = self._get_display_name(video_path)
+                    preview = caption[:150] + "..." if len(caption) > 150 else caption
+                    self.state._just_completed_caption_preview = preview
                     await self.emit_progress()
 
                 except Exception as e:

@@ -26,6 +26,9 @@ export interface ProgressState {
   batch_size: number
   workers: WorkerProgress[]
   completed_videos: number
+  // Transient completion event fields
+  just_completed_video: string | null
+  just_completed_caption_preview: string | null
 }
 
 export const initialProgressState: ProgressState = {
@@ -45,4 +48,6 @@ export const initialProgressState: ProgressState = {
   batch_size: 1,
   workers: [],
   completed_videos: 0,
+  just_completed_video: null,
+  just_completed_caption_preview: null,
 }

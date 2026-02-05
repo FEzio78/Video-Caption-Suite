@@ -214,10 +214,13 @@ export const useVideoStore = defineStore('video', () => {
     return captions.value.find(c => c.video_name === stem)
   }
 
-  function markVideoAsCaptioned(videoName: string) {
+  function markVideoAsCaptioned(videoName: string, captionPreview?: string | null) {
     const video = videos.value.find(v => v.name === videoName)
     if (video) {
       video.has_caption = true
+      if (captionPreview != null) {
+        video.caption_preview = captionPreview
+      }
     }
   }
 

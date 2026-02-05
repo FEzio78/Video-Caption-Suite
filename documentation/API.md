@@ -862,10 +862,10 @@ const ws = new WebSocket('ws://localhost:8000/ws/progress');
   "type": "progress",
   "data": {
     "stage": "processing",
-    "current_video": "video1.mp4",
-    "video_index": 0,
+    "current_video": "video2.mp4",
+    "video_index": 1,
     "total_videos": 5,
-    "completed_videos": 0,
+    "completed_videos": 1,
     "tokens_generated": 256,
     "tokens_per_sec": 42.5,
     "model_loaded": true,
@@ -874,10 +874,21 @@ const ws = new WebSocket('ws://localhost:8000/ws/progress');
     "substage_progress": 0.45,
     "elapsed_time": 30.2,
     "batch_size": 1,
-    "workers": []
+    "workers": [],
+    "just_completed_video": "video1.mp4",
+    "just_completed_caption_preview": "A person walks through a sunlit park..."
   }
 }
 ```
+
+**Completion Event Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `just_completed_video` | `string \| null` | Relative path of the video that just finished processing. Only set on the message immediately after a video completes; `null` on all other messages. |
+| `just_completed_caption_preview` | `string \| null` | First 150 characters of the generated caption. Only set when `just_completed_video` is set and processing succeeded. |
+
+The frontend uses these transient fields to immediately mark tiles as captioned and update caption previews in real-time without requiring a page refresh.
 
 **File Reference:** `backend/api.py:120-180`
 

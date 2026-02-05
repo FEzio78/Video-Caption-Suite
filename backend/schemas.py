@@ -97,6 +97,9 @@ class ProgressUpdate(BaseModel):
     batch_size: int = 1
     workers: List[WorkerProgress] = []
     completed_videos: int = 0
+    # Transient completion event fields (set only on the message after a video finishes)
+    just_completed_video: Optional[str] = None
+    just_completed_caption_preview: Optional[str] = None
 
 
 class MediaType(str, Enum):

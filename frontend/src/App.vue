@@ -51,26 +51,13 @@ const processingVideoName = computed(() => {
   return isProcessing.value ? state.value.current_video : null
 })
 
-// Watch for video completion during processing
-// When current_video changes, the previous video has completed
-watch(
-  () => state.value.current_video,
-  (newVideo, oldVideo) => {
-    // If we were processing a video and now moved to a different one (or null),
-    // the old video completed successfully
-    if (oldVideo && isProcessing.value && newVideo !== oldVideo) {
-      videoStore.markVideoAsCaptioned(oldVideo)
-    }
-  }
-)
-
-// Watch for processing completion to mark the final video
+// Safety net: refresh full video list when processing completes
+// (real-time updates are handled by progressStore via just_completed_video events)
 watch(
   () => isComplete.value,
   (nowComplete, wasComplete) => {
-    // When processing just completed, mark the last video as captioned
-    if (nowComplete && !wasComplete && state.value.current_video) {
-      videoStore.markVideoAsCaptioned(state.value.current_video)
+    if (nowComplete && !wasComplete) {
+      setTimeout(() => videoStore.fetchVideos(), 1000)
     }
   }
 )
