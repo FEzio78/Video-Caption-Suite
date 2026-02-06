@@ -173,7 +173,7 @@ onUnmounted(() => {
       <!-- Dropdown menu -->
       <div
         v-if="isOpen"
-        class="prompt-library-dropdown fixed w-72 bg-dark-800 rounded-lg shadow-xl z-[9999] overflow-hidden"
+        class="prompt-library-dropdown fixed w-72 bg-dark-800 rounded-lg shadow-xl z-[9999] overflow-hidden border border-primary-500/30"
         :style="{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }"
         @click.stop
       >
@@ -233,7 +233,7 @@ onUnmounted(() => {
       <!-- Save dialog -->
       <div
         v-if="showSaveDialog"
-        class="prompt-library-dropdown fixed w-72 bg-dark-800 rounded-lg shadow-xl z-[9999] p-3"
+        class="prompt-library-dropdown fixed w-72 bg-dark-800 rounded-lg shadow-xl z-[9999] p-3 border border-primary-500/30"
         :style="{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }"
         @click.stop
       >

@@ -35,7 +35,7 @@ function handleChange(event: Event) {
       :value="modelValue"
       :disabled="disabled"
       :class="[
-        'input appearance-none cursor-pointer',
+        'input appearance-none cursor-pointer border border-primary-500/30',
         error && 'focus:ring-red-500',
       ]"
       @change="handleChange"

@@ -154,7 +154,7 @@ function utilizationTextColor(percent: number): string {
     >
       <div
         v-if="expanded"
-        class="absolute top-full right-0 mt-2 w-80 bg-dark-800 rounded-lg shadow-xl z-50 p-4"
+        class="absolute top-full right-0 mt-2 w-80 bg-dark-800 rounded-lg shadow-xl z-50 p-4 border border-primary-500/30"
       >
         <h3 class="text-sm font-medium text-dark-200 mb-3">System Resources</h3>
 

@@ -52,7 +52,7 @@ const showNgramSize = computed(() => props.activeTab === 'ngrams')
       <select
         :value="stopwordPreset"
         :disabled="loading"
-        class="bg-dark-700 text-dark-200 text-xs rounded px-2 py-1 focus:outline-none disabled:opacity-50"
+        class="bg-dark-700 text-dark-200 text-xs rounded px-2 py-1 border border-primary-500/30 focus:outline-none disabled:opacity-50"
         @change="emit('update:stopwordPreset', ($event.target as HTMLSelectElement).value as StopwordPreset)"
       >
         <option v-for="opt in stopwordOptions" :key="opt.value" :value="opt.value">
@@ -96,7 +96,7 @@ const showNgramSize = computed(() => props.activeTab === 'ngrams')
       <select
         :value="ngramSize"
         :disabled="loading"
-        class="bg-dark-700 text-dark-200 text-xs rounded px-2 py-1 focus:outline-none disabled:opacity-50"
+        class="bg-dark-700 text-dark-200 text-xs rounded px-2 py-1 border border-primary-500/30 focus:outline-none disabled:opacity-50"
         @change="emit('update:ngramSize', parseInt(($event.target as HTMLSelectElement).value))"
       >
         <option v-for="opt in ngramOptions" :key="opt.value" :value="opt.value">
